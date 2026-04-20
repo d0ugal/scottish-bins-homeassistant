@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import BIN_TYPES, DOMAIN
 from .coordinator import EastDunbartonshireCoordinator
+from .road_works import RoadWorksCoordinator
 from .school_holidays import SchoolHolidaysCoordinator
 
 _SCHOOL_DEVICE = DeviceInfo(
@@ -33,6 +34,11 @@ async def async_setup_entry(
     ]
     if "school_holidays" in data:
         entities.append(SchoolHolidayYearsSensor(data["school_holidays"]))
+    if "road_works" in data:
+        entities += [
+            ActiveRoadWorksSensor(data["road_works"]),
+            UpcomingRoadWorksSensor(data["road_works"]),
+        ]
     async_add_entities(entities)
 
 
@@ -99,3 +105,83 @@ class SchoolHolidayYearsSensor(CoordinatorEntity[SchoolHolidaysCoordinator], Sen
         if not self.coordinator.data:
             return None
         return ", ".join(self.coordinator.data.available_years)
+
+
+# ---------------------------------------------------------------------------
+# Road works sensors
+# ---------------------------------------------------------------------------
+
+_ROAD_WORKS_DEVICE = DeviceInfo(
+    identifiers={(DOMAIN, "east_dunbartonshire_road_works")},
+    name="East Dunbartonshire Road Works",
+)
+
+
+class ActiveRoadWorksSensor(CoordinatorEntity[RoadWorksCoordinator], SensorEntity):
+    _attr_has_entity_name = True
+    _attr_name = "Active road works"
+    _attr_unique_id = "east_dunbartonshire_active_road_works"
+    _attr_native_unit_of_measurement = "works"
+    _attr_device_info = _ROAD_WORKS_DEVICE
+
+    @property
+    def native_value(self) -> int | None:
+        if not self.coordinator.data:
+            return None
+        return len(self.coordinator.data.active)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        if not self.coordinator.data:
+            return {}
+        return {
+            "works": [
+                {
+                    "reference": w.reference,
+                    "street": w.street_name,
+                    "area": w.area,
+                    "promoter": w.promoter,
+                    "type": w.works_type,
+                    "start_date": w.start_date.isoformat() if w.start_date else None,
+                    "end_date": w.end_date.isoformat() if w.end_date else None,
+                    "status": w.status,
+                    "description": w.description,
+                }
+                for w in self.coordinator.data.active[:20]
+            ]
+        }
+
+
+class UpcomingRoadWorksSensor(CoordinatorEntity[RoadWorksCoordinator], SensorEntity):
+    _attr_has_entity_name = True
+    _attr_name = "Upcoming road works"
+    _attr_unique_id = "east_dunbartonshire_upcoming_road_works"
+    _attr_native_unit_of_measurement = "works"
+    _attr_device_info = _ROAD_WORKS_DEVICE
+
+    @property
+    def native_value(self) -> int | None:
+        if not self.coordinator.data:
+            return None
+        return len(self.coordinator.data.upcoming)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        if not self.coordinator.data:
+            return {}
+        return {
+            "works": [
+                {
+                    "reference": w.reference,
+                    "street": w.street_name,
+                    "area": w.area,
+                    "promoter": w.promoter,
+                    "type": w.works_type,
+                    "start_date": w.start_date.isoformat() if w.start_date else None,
+                    "end_date": w.end_date.isoformat() if w.end_date else None,
+                    "status": w.status,
+                    "description": w.description,
+                }
+                for w in self.coordinator.data.upcoming
+            ]
+        }
