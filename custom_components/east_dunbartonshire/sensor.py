@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import BIN_TYPES, DOMAIN
 from .coordinator import EastDunbartonshireCoordinator
+from .planning import PlanningCoordinator
 from .school_holidays import SchoolHolidaysCoordinator
 
 _SCHOOL_DEVICE = DeviceInfo(
@@ -33,6 +34,9 @@ async def async_setup_entry(
     ]
     if "school_holidays" in data:
         entities.append(SchoolHolidayYearsSensor(data["school_holidays"]))
+    planning_key = f"{entry.entry_id}_planning"
+    if planning_key in data:
+        entities.append(PlanningApplicationsSensor(data[planning_key], entry))
     async_add_entities(entities)
 
 
@@ -99,3 +103,48 @@ class SchoolHolidayYearsSensor(CoordinatorEntity[SchoolHolidaysCoordinator], Sen
         if not self.coordinator.data:
             return None
         return ", ".join(self.coordinator.data.available_years)
+
+
+# ---------------------------------------------------------------------------
+# Planning applications sensors
+# ---------------------------------------------------------------------------
+
+
+class PlanningApplicationsSensor(CoordinatorEntity[PlanningCoordinator], SensorEntity):
+    _attr_has_entity_name = True
+    _attr_name = "Nearby planning applications"
+    _attr_native_unit_of_measurement = "applications"
+
+    def __init__(self, coordinator: PlanningCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_planning_nearby"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.title,
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        if not self.coordinator.data:
+            return None
+        return len(self.coordinator.data.applications)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        if not self.coordinator.data:
+            return {}
+        return {
+            "search_radius_m": self.coordinator.data.search_radius_m,
+            "applications": [
+                {
+                    "reference": a.reference,
+                    "address": a.address,
+                    "description": a.description,
+                    "date_received": a.date_received.isoformat() if a.date_received else None,
+                    "status": a.status,
+                    "distance_m": a.distance_m,
+                    "url": a.url,
+                }
+                for a in self.coordinator.data.applications[:10]
+            ],
+        }

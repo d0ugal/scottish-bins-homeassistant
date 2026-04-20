@@ -6,8 +6,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .const import CONF_ADDRESS, DOMAIN
 from .coordinator import EastDunbartonshireCoordinator
+from .planning import PlanningCoordinator
 from .school_holidays import SchoolHolidaysCoordinator
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.CALENDAR, Platform.SENSOR]
@@ -27,6 +28,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await school_coordinator.async_config_entry_first_refresh()
         domain_data["school_holidays"] = school_coordinator
 
+    # Planning coordinator — per entry (proximity is relative to the configured address)
+    address = entry.data.get(CONF_ADDRESS, "")
+    postcode = address.split(", ")[-1] if ", " in address else address
+    if postcode:
+        planning_coordinator = PlanningCoordinator(hass, postcode)
+        await planning_coordinator.async_config_entry_first_refresh()
+        domain_data[f"{entry.entry_id}_planning"] = planning_coordinator
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -35,7 +44,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         domain_data = hass.data[DOMAIN]
         domain_data.pop(entry.entry_id)
+        domain_data.pop(f"{entry.entry_id}_planning", None)
         # Remove shared coordinator only when the last entry is removed
-        if not any(k for k in domain_data if k != "school_holidays"):
+        if not any(k for k in domain_data if k not in ("school_holidays",)):
             domain_data.pop("school_holidays", None)
     return unload_ok
