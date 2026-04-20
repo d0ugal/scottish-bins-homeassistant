@@ -80,7 +80,7 @@ class ScottishBinsCoordinator(DataUpdateCoordinator[list[BinCollection]]):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(hours=6),
+            update_interval=timedelta(hours=24),
         )
         self._entry = entry
         self.session = async_get_clientsession(hass)
