@@ -58,9 +58,7 @@ async def test_north_ayrshire(session):
     assert properties, "No properties found for North Ayrshire"
     uprn, _ = properties[0]
     collections = await _fetch_north_ayrshire(session, uprn)
-    assert isinstance(
-        collections, list
-    ), f"Unexpected result type for North Ayrshire UPRN {uprn}"
+    assert isinstance(collections, list), f"Unexpected result type for North Ayrshire UPRN {uprn}"
 
 
 async def test_west_lothian(session):
