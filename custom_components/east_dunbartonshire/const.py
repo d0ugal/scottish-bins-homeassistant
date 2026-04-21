@@ -9,4 +9,6 @@ BIN_TYPES = {
     "food-caddy": "Food caddy",
     "garden-bin": "Green bin",
     "rubbish-bin": "Grey bin",
+    "plastic-bin": "Brown bin",
+    "recycling-bin": "Blue bin",
 }
