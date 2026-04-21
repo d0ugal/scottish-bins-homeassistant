@@ -118,6 +118,9 @@ async def _fetch_nearby(
         "xmax": home_easting + radius_m,
         "ymax": home_northing + radius_m,
     }
+    cutoff_ms = int(
+        (datetime.now(UTC) - timedelta(days=_RECENT_DAYS)).timestamp() * 1000
+    )
     params = {
         "f": "json",
         "geometry": json.dumps(bbox, separators=(",", ":")),
@@ -125,15 +128,7 @@ async def _fetch_nearby(
         "inSR": "27700",
         "outSR": "4326",
         "spatialRel": "esriSpatialRelIntersects",
-        "where": (
-            "ISPAVISIBLE=1 AND DATEMODIFIED>="
-            + str(
-                int(
-                    (datetime.now(UTC) - timedelta(days=_RECENT_DAYS)).timestamp()
-                    * 1000
-                )
-            )
-        ),
+        "where": f"ISPAVISIBLE=1 AND DATEMODIFIED>={cutoff_ms}",
         "outFields": "REFVAL,KEYVAL,ADDRESS,DESCRIPTION,DATEMODIFIED",
         "returnGeometry": "false",
         "returnCentroid": "true",
